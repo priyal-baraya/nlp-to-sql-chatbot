@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Natural Language to SQL Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f8f9fa;
+    }
+    h1 {
+      color: #333;
+    }
+    form {
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      width: 60%;
+      padding: 10px;
+      margin-right: 10px;
+      font-size: 16px;
+    }
+    input[type="submit"] {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    table {
+      width: 80%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #ced9e6;
+      color: black;
+    }
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    .query-box {
+      margin-top: 20px;
+      font-family: monospace;
+      background-color: #eee;
+      padding: 10px;
+      border-left: 5px solid #ced9e6;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ask a Question</h1>
+  <form method="POST">
+    <input type="text" name="question" placeholder="e.g., Show all dealer names" required>
+    <input type="submit" value="Ask">
+  </form>
+
+  {% if query %}
+    <div class="query-box">
+      <strong>Generated SQL:</strong><br>
+      {{ query }}
+    </div>
+  {% endif %}
+
+  {% if result %}
+    <h2>Result</h2>
+    <table>
+      <thead>
+        <tr>
+          {% for col in columns %}
+            <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in result %}
+          <tr>
+            {% for cell in row %}
+              <td>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</body>
+</html>
