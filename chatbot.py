@@ -1,30 +1,50 @@
-from flask import Flask, render_template, request
-from sqlalchemy import text
-from app import write_query, db
+from flask import Flask, render_template, request, session
+from flask_session import Session
+from app import process_question, db, engine
+from sqlalchemy.sql import text
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key'  # Replace with a secure secret
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
-@app.route("/", methods=["GET", "POST"])
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    result = None
-    columns = None
-    query = None
+    if "chat_history" not in session:
+        session["chat_history"] = []
 
-    if request.method == "POST":
-        question = request.form["question"]
+    query = answer = result = columns = None
 
-        # Generate SQL
-        query_state = {"question": question}
-        query_state.update(write_query(query_state))
-        query = query_state["query"]
+    if request.method == 'POST':
+        question = request.form['question']
+        chat_history = session["chat_history"]
 
-        # Run query and extract data
-        with db._engine.connect() as conn:
-            result_proxy = conn.execute(text(query))  # ✅ wrap in `text()`
-            result = result_proxy.fetchall()
-            columns = result_proxy.keys()
+        try:
+            response = process_question(question, chat_history)
+            query = response['query']
+            answer = response['answer']
 
-    return render_template("index.html", result=result, columns=columns, query=query)
+            chat_history.append({
+                "question": question,
+                "answer": answer,
+                "query": query,
+                "result": result,
+                "columns": columns
+            })
+
+            session["chat_history"] = chat_history
+
+            with engine.connect() as conn:
+                result_proxy = conn.execute(text(query))
+                result = result_proxy.fetchall()
+                columns = result_proxy.keys()
+
+        except Exception as e:
+            answer = f"Error: {str(e)}"
+            query = "SQL generation failed."
+
+    return render_template('index.html', query=query, answer=answer, result=result, columns=columns, chat_history=session["chat_history"])
+
 
 if __name__ == "__main__":
     app.run(debug=True)
