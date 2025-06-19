@@ -105,16 +105,6 @@ nl-to-sql-chatbot/
 
 ---
 
-## Future Enhancements
-
-- Role-based access (RBAC)  
-- Download results as CSV/Excel  
-- Dockerized deployment  
-- Query caching for performance  
-- Input validation and query safety checks  
-
----
-
 ## Data Privacy Notice
 
 This app sends user prompts and context to Google's Gemini API for query generation. Avoid sharing any sensitive or personal information. For production use, consult Google’s data usage policy and implement necessary privacy measures.
