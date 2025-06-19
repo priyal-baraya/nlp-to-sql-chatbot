@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 from sqlalchemy import create_engine, text
 from langchain_community.utilities import SQLDatabase
 from langchain.chat_models import init_chat_model
@@ -8,8 +8,10 @@ from typing_extensions import TypedDict, Annotated
 from dotenv import load_dotenv
 import os
 
+# Load environment variables
 load_dotenv()
 
+# Database setup
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
@@ -20,12 +22,14 @@ DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB
 engine = create_engine(DATABASE_URL)
 db = SQLDatabase(engine)
 
+# Gemini API setup
 if not os.environ.get("GOOGLE_API_KEY"):
     import getpass
     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter Google Gemini API Key: ")
 
 llm = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
 
+# Prompt templates
 system_message = """
 You are a helpful data assistant. Given the user question and any prior context, write a syntactically correct SQL query in the {dialect} dialect.
 Limit to at most {top_k} results unless otherwise asked. Don't use SELECT * — only include necessary columns.
@@ -54,6 +58,9 @@ class State(TypedDict):
 class QueryOutput(TypedDict):
     query: Annotated[str, ..., "Syntactically valid SQL query."]
 
+# Chat history (global)
+chat_history = []
+
 def write_query(state: State, history_text: str):
     prompt = query_prompt_template.invoke({
         "dialect": db.dialect,
@@ -62,7 +69,6 @@ def write_query(state: State, history_text: str):
         "history": history_text,
         "input": state["question"]
     })
-
     structured_llm = llm.with_structured_output(QueryOutput)
     result = structured_llm.invoke(prompt)
     return {"query": result["query"]}
@@ -87,7 +93,7 @@ def answer_question(state: State, history_text: str):
 def process_question(question: str, chat_history: list) -> dict:
     state: State = {"question": question}
     history_text = "\n".join([f"User: {msg['question']}\nBot: {msg['answer']}" for msg in chat_history]) if chat_history else ""
-    
+
     state.update(write_query(state, history_text))
     state.update(execute_query(state))
     state.update(answer_question(state, history_text))
@@ -97,15 +103,14 @@ def process_question(question: str, chat_history: list) -> dict:
         "answer": state["answer"].content if hasattr(state["answer"], "content") else state["answer"]
     }
 
+# Flask app
 app = Flask(__name__)
-chat_history = []
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     query = answer = result = columns = None
     if request.method == "POST":
         question = request.form["question"]
-
         try:
             response = process_question(question, chat_history)
             query = response["query"]
@@ -121,12 +126,16 @@ def index():
             answer = f"Error: {str(e)}"
             query = "SQL generation failed."
 
-    return render_template("index.html", query=query, answer=answer, result=result,
-                       columns=columns, chat_history=[
-                           {**msg, "query": query, "result": result, "columns": columns}
-                           for msg in chat_history
-                       ])
+    return render_template("index.html", chat_history=[
+        {**msg, "query": query if i == len(chat_history)-1 else None, "result": result if i == len(chat_history)-1 else None, "columns": columns if i == len(chat_history)-1 else None}
+        for i, msg in enumerate(chat_history)
+    ])
 
+@app.route("/clear", methods=["POST"])
+def clear():
+    global chat_history
+    chat_history = []
+    return redirect(url_for("index"))
 
 if __name__ == "__main__":
     app.run(debug=True)

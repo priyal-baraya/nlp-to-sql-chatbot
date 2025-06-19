@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chatbot – Natural Language to SQL</title>
+  <title>Chatbot Natural Language to SQL</title>
   <style>
     html, body {
       height: 100%;
@@ -105,13 +105,23 @@
       border: none;
       cursor: pointer;
     }
+
+    .clear-button {
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div class="chat-wrapper">
     <div class="chat-container" id="chatbox">
       <h2>Natural Language to SQL Chatbot</h2>
-      
+
       {% for entry in chat_history %}
         <div class="message user">
           {{ entry.question }}
@@ -153,10 +163,13 @@
       <input type="text" name="question" placeholder="Type your question..." required autofocus>
       <input type="submit" value="Send">
     </form>
+
+    <form method="POST" action="/clear" style="max-width: 800px; margin: 10px auto; text-align: center;">
+      <input type="submit" class="clear-button" value="Clear Chat">
+    </form>
   </div>
 
   <script>
-    // Auto-scroll to bottom
     const chatbox = document.getElementById("chatbox");
     chatbox.scrollTop = chatbox.scrollHeight;
   </script>
